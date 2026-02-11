@@ -105,7 +105,8 @@
             "@dev"
         ],
         "fresh": [
-            "@php vendor/bin/testbench migrate:fresh --seed --seeder=Cachet\\Database\\Seeders\\DatabaseSeeder",
+            "@php vendor/bin/testbench migrate:fresh",
+            "@php vendor/bin/testbench db:seed Cachet\\Database\\Seeders\\DatabaseSeeder",
             "@serve"
         ],
         "serve": [
@@ -114,8 +115,10 @@
         ],
         "setup": [
             "@prepare",
+            "npm run build",
             "@php vendor/bin/testbench workbench:build",
-            "npm run build"
+            "@php vendor/bin/testbench migrate",
+            "@php vendor/bin/testbench db:seed Cachet\\Database\\Seeders\\DatabaseSeeder"
         ],
         "test:lint": [
             "pint --test"
