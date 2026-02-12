@@ -24,7 +24,7 @@ migrations:
 
 workbench:
   start: '/'
-  install: false
+  install: true
   discovers:
     config: true
     web: true
@@ -35,12 +35,12 @@ workbench:
   build:
     - filament:assets
     - storage-link
-    # - create-sqlite-db
-    # - migrate
-    # - asset-publish 
+    - create-sqlite-db
+    - migrate
+    - asset-publish 
   assets:
     - query-builder-config
-    # - cachet-assets
+    - cachet-assets
 
 # purge:
 #   directories:
