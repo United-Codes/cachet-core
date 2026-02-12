@@ -4,6 +4,7 @@ namespace Cachet;
 
 use BladeUI\Icons\Factory;
 use Cachet\Commands\MakeUserCommand;
+use Cachet\Commands\ResetDataCommand;
 use Cachet\Commands\SendBeaconCommand;
 use Cachet\Commands\SyncUptimeKumaCommand;
 use Cachet\Commands\VersionCommand;
@@ -186,6 +187,7 @@ class CachetCoreServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 MakeUserCommand::class,
+                ResetDataCommand::class,
                 SendBeaconCommand::class,
                 SyncUptimeKumaCommand::class,
                 VersionCommand::class,
