@@ -106,7 +106,7 @@
         ],
         "fresh": [
             "@php vendor/bin/testbench migrate:fresh",
-            "@php vendor/bin/testbench db:seed Cachet\\Database\\Seeders\\DatabaseSeeder",
+            "@php vendor/bin/testbench db:seed Cachet\\Database\\Seeders\\UcSetupSeeder",
             "@serve"
         ],
         "serve": [
@@ -118,7 +118,10 @@
             "npm run build",
             "@php vendor/bin/testbench workbench:build",
             "@php vendor/bin/testbench migrate",
-            "@php vendor/bin/testbench db:seed Cachet\\Database\\Seeders\\DatabaseSeeder"
+            "@php vendor/bin/testbench db:seed Cachet\\Database\\Seeders\\UcSetupSeeder"
+        ],
+        "reset": [
+            "@php vendor/bin/testbench cachet:reset-data --force --seed"
         ],
         "test:lint": [
             "pint --test"
