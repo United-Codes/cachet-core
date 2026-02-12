@@ -7,6 +7,7 @@ use Cachet\Http\Controllers\HealthController;
 use Cachet\Http\Controllers\RssController;
 use Cachet\Http\Controllers\Setup\SetupController;
 use Cachet\Http\Controllers\StatusPage\StatusPageController;
+use Cachet\Http\Controllers\StatusPage\SubscriberController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 
@@ -37,6 +38,7 @@ class PendingRouteRegistration
                 $router->post('/setup', [SetupController::class, 'store'])->name('setup.store');
 
                 // @todo subscription routes... subscribe, manage subscriptions, unsubscribe
+                $router->post('/subscriber/subscribe', [SubscriberController::class, 'subscribe'])->name('subscriber.subscribe');
 
                 $router->get('/health', HealthController::class)->name('health');
 
