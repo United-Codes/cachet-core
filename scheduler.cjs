@@ -1,23 +1,31 @@
 /**
  * Simple scheduler runner for testbench.
- * Runs `php vendor/bin/testbench schedule:run` every 60 seconds.
  *
  */
 const { execSync } = require("child_process");
+const path = require("path");
 
-const INTERVAL = 60_000; // 1 minute
+const INTERVAL = 60_000; // 1 minute for sync with uptime
+
+const isVendor = __dirname.includes(path.join("vendor", "cachethq", "core"));
+const projectRoot = isVendor
+    ? path.resolve(__dirname, "..", "..", "..") 
+    : __dirname;                                
+const command = isVendor
+    ? "php artisan schedule:run --no-interaction 2>&1"
+    : "php vendor/bin/testbench schedule:run --no-interaction 2>&1";
 
 function runSchedule() {
     try {
-        execSync("php vendor/bin/testbench schedule:run --no-interaction 2>&1", {
+        execSync(command, {
             stdio: "inherit",
-            cwd: __dirname,
+            cwd: projectRoot,
         });
     } catch (e) {
         console.error("[scheduler] Error running schedule:", e);}
 }
 
-console.log("[scheduler] Starting scheduler (every 60s)...");
+console.log(`[scheduler] Starting scheduler in every ${INTERVAL}sec...`);
 
 runSchedule();
 setInterval(runSchedule, INTERVAL);
