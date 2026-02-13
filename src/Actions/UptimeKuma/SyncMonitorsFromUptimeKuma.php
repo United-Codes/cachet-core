@@ -9,10 +9,13 @@ use Cachet\Enums\ResourceVisibilityEnum;
 use Cachet\Models\Component;
 use Cachet\Models\ComponentGroup;
 use Cachet\Models\Incident;
+use Cachet\Models\IncidentTemplate;
 use Cachet\Services\UptimeKuma\UptimeKumaClient;
+use Cachet\Settings\IntegrationSettings;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Sync monitors and groups from Uptime Kuma to Cachet.
@@ -206,6 +209,14 @@ class SyncMonitorsFromUptimeKuma
             }
 
             $component->update($updates);
+            if ($updateStatus) {
+                $newStatus = $this->mapStatus($monitor['status']);
+                if ($newStatus === ComponentStatusEnum::major_outage) {
+                    $this->createIncidentIfNeeded($component, $monitor);
+                } elseif ($newStatus === ComponentStatusEnum::operational) {
+                    $this->resolveActiveIncidents($component);
+                }
+            }
 
             return 'updated';
         }
@@ -337,6 +348,11 @@ class SyncMonitorsFromUptimeKuma
 
             $component->update($updates);
 
+            //IF monitor is DOWN, create incident
+            if ($newStatus === ComponentStatusEnum::major_outage) {
+                $this->createIncidentIfNeeded($component, $monitor);
+            }
+
             // If monitor is UP, resolve any active incidents created by Uptime Kuma
             if ($newStatus === ComponentStatusEnum::operational) {
                 $this->resolveActiveIncidents($component);
@@ -346,6 +362,111 @@ class SyncMonitorsFromUptimeKuma
         }
 
         return $result;
+    }
+
+    /**
+     * Create an inciden if the monitor is down and theres no active incident for this component
+     */
+    protected function createIncidentIfNeeded(Component $component, array $monitor): void
+    {
+        if (! $this->shouldAutoCreateIncidents()) {
+            return;
+        }
+        $existingIncident = Incident::query()
+            ->where('external_provider', 'uptime_kuma')
+            ->whereIn('status', IncidentStatusEnum::unresolved())
+            ->whereHas('components', fn ($query) => $query->where('components.id', $component->id))
+            ->first();
+
+        if ($existingIncident) {
+            return;
+        }
+
+        $monitorName = $monitor['name'] ?? 'Unknown Service';
+        $occurredAt = Carbon::now();
+        $template = IncidentTemplate::where('slug', 'service-outage')->first();
+        if ($template) {
+            $incidentMessage = $template->render([
+                'service_name' => $monitorName,
+                'component_name' => $component->name,
+                'url' => $monitor['url'] ?? null,
+                'error_message' => 'Service is not responding',
+                'ping' => null,
+                'occurred_at' => $occurredAt->format('F j, Y \a\t g:i A T'),
+                'date' => $occurredAt->format('F j, Y'),
+                'time' => $occurredAt->format('g:i A T'),
+            ]);
+            //if template isnot seeded
+        } else {
+            $incidentMessage = "## Service Disruption Detected\n\n"
+                . "**Affected Service:** {$component->name}\n\n"
+                . "**Status:** Investigating\n\n"
+                . "**Detected:** {$occurredAt->format('F j, Y \a\t g:i A T')}\n\n"
+                . "---\n\n"
+                . "Our monitoring systems have detected an issue with **{$monitorName}**.\n\n";
+
+            if (! empty($monitor['url'])) {
+                $incidentMessage .= "- **Endpoint:** `{$monitor['url']}`\n";
+            }
+
+            $incidentMessage .= "\n---\n\n"
+                . "Our team has been alerted and is actively investigating the issue. "
+                . "We will provide updates as more information becomes available.\n\n"
+                . "_This incident was automatically detected by our monitoring system._";
+        }
+
+        $incident = Incident::create([
+            'guid' => Str::uuid(),
+            'external_provider' => 'uptime_kuma',
+            'external_id' => (string) ($monitor['id'] ?? ''),
+            'name' => "Service Disruption: {$component->name}",
+            'status' => IncidentStatusEnum::investigating,
+            'message' => $incidentMessage,
+            'visible' => ResourceVisibilityEnum::guest,
+            'stickied' => false,
+            'notifications' => $this->shouldSendNotifications(),
+            'occurred_at' => $occurredAt,
+        ]);
+
+        $incident->components()->attach($component->id, [
+            'component_status' => ComponentStatusEnum::major_outage,
+        ]);
+
+        Log::info('Auto-created incident during sync', [
+            'incident_id' => $incident->id,
+            'component_id' => $component->id,
+            'monitor_id' => $monitor['id'] ?? null,
+            'monitor_name' => $monitorName,
+        ]);
+    }
+
+    /**
+     * Check if auto-incident creation is enabled
+     */
+    protected function shouldAutoCreateIncidents(): bool
+    {
+        try {
+            $settings = app(IntegrationSettings::class);
+
+            return $settings->uptime_kuma_auto_incidents;
+        } catch (\Exception $e) {
+            Log::debug('settings not available for auto incidents check');
+
+            return config('cachet.uptime_kuma.auto_incidents', true);
+        }
+    }
+
+    protected function shouldSendNotifications(): bool
+    {
+        try {
+            $settings = app(IntegrationSettings::class);
+
+            return $settings->uptime_kuma_send_notifications;
+        } catch (\Exception $e) {
+            Log::debug('ssetting not available for notifications check');
+
+            return config('cachet.uptime_kuma.send_notifications', default: true);
+        }
     }
 
     /**
