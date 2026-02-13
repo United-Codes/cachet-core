@@ -1,5 +1,21 @@
-@if ($showSupport || $showTimezone)
-<footer class="flex flex-col items-center justify-center gap-2 border-t px-8 py-6 text-center text-sm tracking-tight text-zinc-500 dark:text-zinc-400 dark:border-zinc-700">
+@if ($showSupport || $showTimezone || !empty($brandingFooterCopyright) || !empty($brandingFooterLinks))
+<footer class="flex flex-col items-center justify-center gap-2 border-t px-8 py-6 text-center text-sm tracking-tight text-zinc-500 dark:text-zinc-400 dark:border-zinc-700"
+    @if($brandingFooterBgColor ?? false) style="background-color: {{ $brandingFooterBgColor }}; {{ ($brandingFooterTextColor ?? false) ? 'color: '.$brandingFooterTextColor : '' }}" @elseif($brandingFooterTextColor ?? false) style="color: {{ $brandingFooterTextColor }}" @endif
+>
+    @if(!empty($brandingFooterCopyright))
+    <div class="text-sm">{!! $brandingFooterCopyright !!}</div>
+    @endif
+
+    @if(!empty($brandingFooterLinks))
+    <div class="flex items-center gap-4">
+        @foreach($brandingFooterLinks as $label => $url)
+            <a href="{{ $url }}" target="_blank" rel="noopener" class="text-sm font-medium transition hover:opacity-80 underline"
+                @if($brandingFooterTextColor ?? false) style="color: {{ $brandingFooterTextColor }}" @endif
+            >{{ $label }}</a>
+        @endforeach
+    </div>
+    @endif
+
     @if($showSupport)
     <div class="flex items-center justify-center gap-2">
         {{ __('cachet::cachet.powered_by') }}

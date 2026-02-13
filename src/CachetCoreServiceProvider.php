@@ -8,6 +8,7 @@ use Cachet\Commands\ResetDataCommand;
 use Cachet\Commands\SendBeaconCommand;
 use Cachet\Commands\SyncUptimeKumaCommand;
 use Cachet\Commands\VersionCommand;
+use Cachet\Providers\CustomBrandingServiceProvider;
 use Cachet\Services\UptimeKuma\UptimeKumaClient;
 use Cachet\Database\Seeders\DatabaseSeeder;
 use Cachet\Listeners\SendWebhookListener;
@@ -77,6 +78,7 @@ class CachetCoreServiceProvider extends ServiceProvider
         $this->registerResources();
         $this->registerPublishing();
         $this->registerBladeComponents();
+        $this->app->register(CustomBrandingServiceProvider::class);
 
         Event::listen([
             'Cachet\Events\Incidents\*',
